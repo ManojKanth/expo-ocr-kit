@@ -1,0 +1,43 @@
+{
+  "name": "expo-ocr-kit",
+  "version": "0.1.0",
+  "description": "On-device OCR module for Expo and React Native using ML Kit (Android) and Vision (iOS)",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "scripts": {
+    "build": "expo-module build",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "prepare": "expo-module prepare",
+    "prepublishOnly": "expo-module prepublishOnly",
+    "expo-module": "expo-module",
+    "open:ios": "xed example/ios",
+    "open:android": "open -a \"Android Studio\" example/android"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "expo-ocr-kit",
+    "ExpoOcrKit"
+  ],
+  "repository": "https://github.com/ManojKanth/expo-ocr-kit",
+  "bugs": {
+    "url": "https://github.com/ManojKanth/expo-ocr-kit/issues"
+  },
+  "author": "ManojkanthR <manojkanthr@gmail.com> (https://github.com/ManojKanth)",
+  "license": "MIT",
+  "homepage": "https://github.com/ManojKanth/expo-ocr-kit#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/react": "~19.1.1",
+    "expo-module-scripts": "^55.0.2",
+    "expo": "55.0.10-canary-20260327-0789fbc",
+    "react-native": "0.82.1"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}
