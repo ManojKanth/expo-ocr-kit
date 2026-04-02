@@ -11,6 +11,22 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "plugins": [
+      [
+        "../app.plugin.js",
+        {
+          "cameraPermission": "Allow this app to capture receipts for OCR scanning."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow this app to capture receipts for OCR scanning.",
+          "photosPermission": "Allow this app to choose receipt images for OCR scanning.",
+          "microphonePermission": false
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "expo.modules.ocrkit.example"

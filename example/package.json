@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "expo": "55.0.10-canary-20260327-0789fbc",
+    "expo-image-picker": "55.0.15-canary-20260327-0789fbc",
     "react": "19.2.0",
     "react-native": "0.83.4"
   },

@@ -1,8 +1,10 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { scanReceipt, type OcrResult } from 'expo-ocr-kit';
 import {
   Alert,
   Button,
+  Image,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -17,8 +19,8 @@ export default function App() {
   const [result, setResult] = useState<OcrResult | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
-  async function handleScan() {
-    const trimmedUri = imageUri.trim();
+  async function runOcr(uri: string) {
+    const trimmedUri = uri.trim();
 
     if (!trimmedUri) {
       Alert.alert('Image URI required', 'Enter a local file URI before running OCR.');
@@ -37,6 +39,56 @@ export default function App() {
     }
   }
 
+  async function handleScan() {
+    await runOcr(imageUri);
+  }
+
+  async function handleTakePhoto() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('Camera permission required', 'Grant camera access to capture a receipt image.');
+      return;
+    }
+
+    const pickerResult = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+      allowsEditing: false,
+    });
+
+    if (pickerResult.canceled || !pickerResult.assets?.[0]?.uri) {
+      return;
+    }
+
+    const nextUri = pickerResult.assets[0].uri;
+    setImageUri(nextUri);
+    await runOcr(nextUri);
+  }
+
+  async function handleChooseImage() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('Photo permission required', 'Grant photo library access to choose a receipt image.');
+      return;
+    }
+
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+      allowsEditing: false,
+    });
+
+    if (pickerResult.canceled || !pickerResult.assets?.[0]?.uri) {
+      return;
+    }
+
+    const nextUri = pickerResult.assets[0].uri;
+    setImageUri(nextUri);
+    await runOcr(nextUri);
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -50,7 +102,17 @@ export default function App() {
           <Text style={styles.caption}>Current platform: {Platform.OS}</Text>
         </Group>
 
-        <Group name="2. Provide an image URI">
+        <Group name="2. Capture or choose a receipt">
+          <View style={styles.actions}>
+            <Button disabled={isScanning} onPress={handleTakePhoto} title="Take Photo" />
+            <Button disabled={isScanning} onPress={handleChooseImage} title="Choose Image" />
+          </View>
+          <Text style={styles.caption}>
+            Camera capture needs the bundled `expo-ocr-kit` config plugin. Choosing an image also needs the `expo-image-picker` plugin for photo-library permissions.
+          </Text>
+        </Group>
+
+        <Group name="3. Provide or inspect the image URI">
           <TextInput
             autoCapitalize="none"
             autoCorrect={false}
@@ -60,9 +122,11 @@ export default function App() {
             value={imageUri}
           />
           <Button disabled={isScanning} onPress={handleScan} title={isScanning ? 'Scanning...' : 'Run OCR'} />
+          <Text style={styles.caption}>{imageUri || 'No image selected yet.'}</Text>
+          {imageUri ? <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="contain" /> : null}
         </Group>
 
-        <Group name="3. Inspect the OCR result">
+        <Group name="4. Inspect the OCR result">
           <Text style={styles.body}>Full text</Text>
           <Text style={styles.resultText}>{result?.text || 'No OCR result yet.'}</Text>
           <Text style={styles.body}>Blocks detected: {result?.blocks.length ?? 0}</Text>
@@ -151,5 +215,14 @@ const styles = StyleSheet.create({
   blockText: {
     fontSize: 14,
     color: '#0f172a',
+  },
+  actions: {
+    gap: 12,
+  },
+  preview: {
+    width: '100%',
+    height: 240,
+    borderRadius: 12,
+    backgroundColor: '#e2e8f0',
   },
 });
