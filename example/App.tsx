@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { scanReceipt, type OcrResult } from 'expo-ocr-kit';
+import { recognizeText, type OcrResult } from 'expo-ocr-kit';
 import {
   Alert,
   Button,
@@ -29,7 +29,7 @@ export default function App() {
 
     try {
       setIsScanning(true);
-      const nextResult = await scanReceipt(trimmedUri);
+      const nextResult = await recognizeText(trimmedUri);
       setResult(nextResult);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown OCR error';

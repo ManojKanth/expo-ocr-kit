@@ -2,8 +2,8 @@ import ExpoOcrKitModule from './ExpoOcrKitModule';
 
 import type { OcrResult } from './ExpoOcrKit.types';
 
-export async function scanReceipt(uri: string): Promise<OcrResult> {
-  return ExpoOcrKitModule.scanReceipt(uri);
+export async function recognizeText(uri: string): Promise<OcrResult> {
+  return ExpoOcrKitModule.recognizeText(uri);
 }
 
 export { ExpoOcrKitModule };

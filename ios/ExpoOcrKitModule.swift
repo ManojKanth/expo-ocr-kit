@@ -9,8 +9,8 @@ public class ExpoOcrKitModule: Module {
   public func definition() -> ModuleDefinition {
     Name("ExpoOcrKit")
 
-    AsyncFunction("scanReceipt") { (uri: String) throws -> [String: Any] in
-      try self.scanReceipt(uri: uri)
+    AsyncFunction("recognizeText") { (uri: String) throws -> [String: Any] in
+      try self.recognizeText(uri: uri)
     }
 
     View(ExpoOcrKitView.self) {
@@ -24,7 +24,7 @@ public class ExpoOcrKitModule: Module {
     }
   }
 
-  private func scanReceipt(uri: String) throws -> [String: Any] {
+  private func recognizeText(uri: String) throws -> [String: Any] {
     let trimmedUri = uri.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmedUri.isEmpty else {
       throw OcrError.invalidUri("Image URI must not be empty.")

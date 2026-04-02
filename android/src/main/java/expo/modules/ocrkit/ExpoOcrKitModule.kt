@@ -34,8 +34,8 @@ class ExpoOcrKitModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ExpoOcrKit")
 
-    AsyncFunction("scanReceipt") Coroutine { uri: String ->
-      scanReceipt(uri)
+    AsyncFunction("recognizeText") Coroutine { uri: String ->
+      recognizeText(uri)
     }
 
     View(ExpoOcrKitView::class) {
@@ -46,7 +46,7 @@ class ExpoOcrKitModule : Module() {
     }
   }
 
-  private suspend fun scanReceipt(uri: String): Map<String, Any> {
+  private suspend fun recognizeText(uri: String): Map<String, Any> {
     val normalizedUri = uri.trim()
     require(normalizedUri.isNotEmpty()) {
       "Image URI must not be empty."

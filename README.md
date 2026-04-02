@@ -1,45 +1,81 @@
 # Expo OCR Kit
 
-On-device OCR module for Expo and React Native using ML Kit on Android and Vision on iOS.
+Production-grade on-device OCR for Expo and React Native.
 
-## JavaScript API
+`expo-ocr-kit` gives you a small, typed JavaScript API backed by real native OCR engines:
 
-```ts
-import { scanReceipt, type OcrResult } from 'expo-ocr-kit';
+- Android: Google ML Kit Text Recognition
+- iOS: Apple Vision `VNRecognizeTextRequest`
 
-const result: OcrResult = await scanReceipt(uri);
+It is designed for teams who want native OCR quality without giving up the Expo Modules API, modern Expo workflows, or bare React Native compatibility.
+
+## Why this package
+
+- Built with the Expo Modules API, not legacy bridge boilerplate
+- Works in Expo development builds, prebuild workflows, EAS Build, and bare React Native
+- Uses first-party platform OCR engines instead of a one-size-fits-all wrapper
+- Returns a normalized cross-platform result shape
+- Downsamples very large images before OCR to reduce memory pressure and latency
+- Keeps capture flow separate from OCR so you can use camera, gallery, file system, or remote downloads
+
+## Install
+
+```bash
+npm install expo-ocr-kit
 ```
 
-`scanReceipt` accepts a local image URI and returns:
+If you want camera capture in your app flow, install an image acquisition package too. The example app uses `expo-image-picker`.
+
+## Quick start
 
 ```ts
-type OcrResult = {
+import { recognizeText, type OcrResult } from 'expo-ocr-kit';
+
+const result: OcrResult = await recognizeText(uri);
+```
+
+`uri` should be a local image URI such as `file:///...` or another platform-supported local image reference.
+
+## Result shape
+
+```ts
+export type OcrBoundingBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type OcrBlock = {
   text: string;
-  blocks: Array<{
-    text: string;
-    boundingBox: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    };
-  }>;
+  boundingBox: OcrBoundingBox;
+};
+
+export type OcrResult = {
+  text: string;
+  blocks: OcrBlock[];
 };
 ```
 
-## Performance notes
+The package normalizes platform differences so both Android and iOS return:
 
-The native OCR implementations downsample very large images before recognition to reduce memory pressure and OCR latency on large receipt photos.
+- top-left based coordinates
+- image-space bounding boxes
+- the same object structure in JavaScript
 
-- Android downsamples before creating `InputImage`
-- iOS uses `CGImageSource` thumbnail decoding before running Vision
-- bounding boxes are scaled back to the original image coordinate space before they are returned to JavaScript
+## Expo support
 
-## Expo integration
+This package contains native code.
 
-This package contains native code, so it does not work in Expo Go.
+That means:
 
-Use a native build instead:
+- it does **not** work in Expo Go
+- it **does** work in Expo development builds
+- it **does** work with `expo prebuild`
+- it **does** work with EAS Build
+- it **does** work in bare React Native
+
+### Local Expo workflow
 
 ```bash
 npx expo prebuild
@@ -47,19 +83,33 @@ npx expo run:android
 npx expo run:ios
 ```
 
-Why this flow is required:
+### Why Expo Go does not work
 
-- `npx expo prebuild` generates the app's native Android and iOS projects and autolinks this Expo module.
-- `npx expo run:android` compiles the Kotlin module and installs a build that includes ML Kit.
-- `npx expo run:ios` compiles the Swift module and installs a build that includes Vision-based OCR.
+Expo Go only includes the native modules that ship inside the Expo Go app binary. Since `expo-ocr-kit` adds custom Kotlin and Swift code, your app needs its own native build that includes this module.
 
-If you change native Kotlin or Swift code, rebuild the native app. A Metro reload is only enough for JavaScript changes.
+## Camera support
 
-## Config plugin
+`expo-ocr-kit` focuses on OCR, not camera UI.
 
-If you use this library for OCR only from an existing image URI, no config plugin is required.
+That separation is intentional:
 
-If you also add camera capture through this library, use the bundled config plugin so the consuming Expo app gets the required native camera permission setup during prebuild or EAS Build.
+- camera capture belongs in your app's JS layer
+- OCR belongs in the native module
+
+This makes the package reusable for:
+
+- receipt photos
+- gallery images
+- scanned documents
+- screenshots
+- downloaded files
+- any other image source your app supports
+
+### Config plugin
+
+If you use this package only for OCR on an existing image URI, no config plugin is required.
+
+If your app also captures images with the camera, use the bundled config plugin so the native app gets camera permission setup during prebuild or EAS Build.
 
 ```json
 {
@@ -68,7 +118,7 @@ If you also add camera capture through this library, use the bundled config plug
       [
         "expo-ocr-kit",
         {
-          "cameraPermission": "Allow this app to capture receipts for OCR."
+          "cameraPermission": "Allow this app to capture images for OCR."
         }
       ]
     ]
@@ -83,17 +133,74 @@ What the plugin does:
 
 The plugin only configures the native app. You still need to request camera permission at runtime before opening the camera.
 
-## Example app
+## Example: camera + OCR
 
-The example in [`example/App.tsx`](/Users/manojkanth/Desktop/Projects/mine/npm packages/Expo-ocr-kit/expo-ocr-kit/example/App.tsx) is a minimal native-build demo:
+The example app in this repo uses `expo-image-picker` for capture/selection and then sends the resulting image URI into `recognizeText`.
 
-- capture a receipt with the camera
-- choose an existing receipt image from the photo library
-- enter a local `file://` image URI manually
-- run `scanReceipt`
-- inspect the text and bounding boxes returned from native
+Typical app flow:
 
-The example app uses:
+1. Request camera or photo-library permission
+2. Capture or choose an image
+3. Get the local URI
+4. Call `recognizeText(uri)`
+5. Render text and bounding boxes
 
-- this package's config plugin for camera permission setup
-- `expo-image-picker` for the camera and photo-library UI at runtime
+## How it works
+
+High-level architecture:
+
+`TypeScript`
+→ `requireNativeModule('ExpoOcrKit')`
+→ Expo Module
+→ Kotlin / Swift native implementation
+→ ML Kit / Vision OCR
+→ normalized result back to JavaScript
+
+### Android
+
+- Uses Google ML Kit Text Recognition
+- Accepts a URI and creates `InputImage`
+- Reads EXIF orientation
+- Downsamples large images before OCR
+- Scales bounding boxes back to the original image coordinate space
+
+### iOS
+
+- Uses Apple Vision `VNRecognizeTextRequest`
+- Loads the image through `CGImageSource`
+- Downsamples large images before OCR
+- Converts Vision's normalized bottom-left coordinates into top-left image coordinates
+- Returns bounding boxes in original image space
+
+## Performance notes
+
+The native implementations intentionally downsample very large images before recognition.
+
+This helps with:
+
+- lower memory pressure on large photos
+- faster OCR on oversized inputs
+- better runtime stability on lower-memory devices
+
+Bounding boxes are scaled back to the original image coordinate space before they are returned to JavaScript, so your overlay logic does not need to know whether native downsampling happened.
+
+## API design direction
+
+The core OCR API is intentionally generic:
+
+```ts
+recognizeText(uri: string): Promise<OcrResult>
+```
+
+That keeps the package useful for more than one use case. Receipt parsing, invoice extraction, field detection, or domain-specific post-processing should be built as layers above OCR rather than baked into the low-level recognition API.
+
+## Repository goals
+
+This package is being built to be:
+
+- easy to understand for Expo developers learning native modules
+- practical enough for real production use
+- small and focused at the public API level
+- explicit about the native tradeoffs under the hood
+
+If that matches what you need, a star on GitHub helps a lot.
