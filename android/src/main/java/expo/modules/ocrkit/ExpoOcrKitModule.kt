@@ -1,54 +1,102 @@
 package expo.modules.ocrkit
 
+import android.graphics.Rect
+import android.net.Uri
+import com.google.android.gms.tasks.Task
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.Text
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import java.net.URL
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class ExpoOcrKitModule : Module() {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
   override fun definition() = ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('ExpoOcrKit')` in JavaScript.
     Name("ExpoOcrKit")
 
-    // Defines constant property on the module.
-    Constant("PI") {
-      Math.PI
+    AsyncFunction("scanReceipt") Coroutine { uri: String ->
+      scanReceipt(uri)
     }
 
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      "Hello world! 👋"
-    }
-
-    AsyncFunction("scanImage") { uri: String ->
-      // OCR work here
-    }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { value: String ->
-      // Send an event to JavaScript.
-      sendEvent("onChange", mapOf(
-        "value" to value
-      ))
-    }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of
-    // the view definition: Prop, Events.
     View(ExpoOcrKitView::class) {
-      // Defines a setter for the `url` prop.
       Prop("url") { view: ExpoOcrKitView, url: URL ->
         view.webView.loadUrl(url.toString())
       }
-      // Defines an event that the view can send to JavaScript.
       Events("onLoad")
+    }
+  }
+
+  private suspend fun scanReceipt(uri: String): Map<String, Any> {
+    val normalizedUri = uri.trim()
+    require(normalizedUri.isNotEmpty()) {
+      "Image URI must not be empty."
+    }
+
+    val context = requireNotNull(appContext.reactContext) {
+      "React context is unavailable."
+    }
+
+    val imageUri = Uri.parse(normalizedUri)
+    val inputImage = withContext(Dispatchers.IO) {
+      InputImage.fromFilePath(context, imageUri)
+    }
+
+    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+    return try {
+      val result = recognizer.process(inputImage).await()
+      mapRecognitionResult(result)
+    } finally {
+      recognizer.close()
+    }
+  }
+
+  private fun mapRecognitionResult(result: Text): Map<String, Any> {
+    return mapOf(
+      "text" to result.text,
+      "blocks" to result.textBlocks.map { block ->
+        mapOf(
+          "text" to block.text,
+          "boundingBox" to rectToMap(block.boundingBox)
+        )
+      }
+    )
+  }
+
+  private fun rectToMap(rect: Rect?): Map<String, Int> {
+    if (rect == null) {
+      return mapOf(
+        "x" to 0,
+        "y" to 0,
+        "width" to 0,
+        "height" to 0
+      )
+    }
+
+    return mapOf(
+      "x" to rect.left,
+      "y" to rect.top,
+      "width" to rect.width(),
+      "height" to rect.height()
+    )
+  }
+
+  private suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { continuation ->
+    addOnSuccessListener { result ->
+      continuation.resume(result)
+    }
+    addOnFailureListener { exception ->
+      continuation.resumeWithException(exception)
+    }
+    addOnCanceledListener {
+      continuation.cancel()
     }
   }
 }

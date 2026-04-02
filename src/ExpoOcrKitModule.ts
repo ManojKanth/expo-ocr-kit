@@ -1,11 +1,9 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
-import { ExpoOcrKitModuleEvents } from './ExpoOcrKit.types';
+import { ExpoOcrKitModuleEvents, OcrResult } from './ExpoOcrKit.types';
 
 declare class ExpoOcrKitModule extends NativeModule<ExpoOcrKitModuleEvents> {
-  PI: number;
-  hello(): string;
-  setValueAsync(value: string): Promise<void>;
+  scanReceipt(uri: string): Promise<OcrResult>;
 }
 
 // This call loads the native module object from the JSI.

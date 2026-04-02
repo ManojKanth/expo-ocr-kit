@@ -1,14 +1,10 @@
 import { registerWebModule, NativeModule } from 'expo';
 
-import { ExpoOcrKitModuleEvents } from './ExpoOcrKit.types';
+import { ExpoOcrKitModuleEvents, OcrResult } from './ExpoOcrKit.types';
 
 class ExpoOcrKitModule extends NativeModule<ExpoOcrKitModuleEvents> {
-  PI = Math.PI;
-  async setValueAsync(value: string): Promise<void> {
-    this.emit('onChange', { value });
-  }
-  hello() {
-    return 'Hello world! 👋';
+  async scanReceipt(_uri: string): Promise<OcrResult> {
+    throw new Error('ExpoOcrKit.scanReceipt is only available on Android and iOS native builds.');
   }
 }
 

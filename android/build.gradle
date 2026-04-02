@@ -15,7 +15,8 @@ android {
   lintOptions {
     abortOnError false
   }
-  dependencies {
-  implementation("com.google.mlkit:text-recognition:16.x.x")
 }
+
+dependencies {
+  implementation("com.google.mlkit:text-recognition:16.0.1")
 }

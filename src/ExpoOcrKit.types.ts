@@ -1,5 +1,22 @@
 import type { StyleProp, ViewStyle } from 'react-native';
 
+export type OcrBoundingBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type OcrBlock = {
+  text: string;
+  boundingBox: OcrBoundingBox;
+};
+
+export type OcrResult = {
+  text: string;
+  blocks: OcrBlock[];
+};
+
 export type OnLoadEventPayload = {
   url: string;
 };

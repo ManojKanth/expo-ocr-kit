@@ -1,41 +1,17 @@
 import ExpoModulesCore
+import ImageIO
+import UIKit
+import Vision
 
 public class ExpoOcrKitModule: Module {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
   public func definition() -> ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('ExpoOcrKit')` in JavaScript.
     Name("ExpoOcrKit")
 
-    // Defines constant property on the module.
-    Constant("PI") {
-      Double.pi
+    AsyncFunction("scanReceipt") { (uri: String) throws -> [String: Any] in
+      try self.scanReceipt(uri: uri)
     }
 
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      return "Hello world! 👋"
-    }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { (value: String) in
-      // Send an event to JavaScript.
-      self.sendEvent("onChange", [
-        "value": value
-      ])
-    }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of the
-    // view definition: Prop, Events.
     View(ExpoOcrKitView.self) {
-      // Defines a setter for the `url` prop.
       Prop("url") { (view: ExpoOcrKitView, url: URL) in
         if view.webView.url != url {
           view.webView.load(URLRequest(url: url))
@@ -43,6 +19,124 @@ public class ExpoOcrKitModule: Module {
       }
 
       Events("onLoad")
+    }
+  }
+
+  private func scanReceipt(uri: String) throws -> [String: Any] {
+    let trimmedUri = uri.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedUri.isEmpty else {
+      throw OcrError.invalidUri("Image URI must not be empty.")
+    }
+
+    let imageURL = try resolveImageURL(from: trimmedUri)
+    let imageSource = try loadImageSource(from: imageURL)
+    let cgImage = try loadCGImage(from: imageSource, url: imageURL)
+    let imageOrientation = cgImageOrientation(from: imageSource)
+    let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
+
+    let request = VNRecognizeTextRequest()
+    request.recognitionLevel = .accurate
+    request.usesLanguageCorrection = true
+
+    let handler = VNImageRequestHandler(cgImage: cgImage, orientation: imageOrientation, options: [:])
+    try handler.perform([request])
+
+    let observations = (request.results as? [VNRecognizedTextObservation] ?? [])
+      .sorted(by: compareObservations)
+
+    let blocks: [[String: Any]] = observations.compactMap { observation in
+      guard let candidate = observation.topCandidates(1).first else {
+        return nil
+      }
+
+      return [
+        "text": candidate.string,
+        "boundingBox": boundingBoxMap(for: observation.boundingBox, imageSize: imageSize)
+      ]
+    }
+
+    let fullText = blocks
+      .compactMap { $0["text"] as? String }
+      .joined(separator: "\n")
+
+    return [
+      "text": fullText,
+      "blocks": blocks
+    ]
+  }
+
+  private func resolveImageURL(from uri: String) throws -> URL {
+    if let url = URL(string: uri), url.scheme != nil {
+      return url
+    }
+
+    let fileURL = URL(fileURLWithPath: uri)
+    guard FileManager.default.fileExists(atPath: fileURL.path) else {
+      throw OcrError.invalidUri("Unable to resolve image URL from URI: \(uri)")
+    }
+    return fileURL
+  }
+
+  private func loadImageSource(from url: URL) throws -> CGImageSource {
+    guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+      throw OcrError.unreadableImage("Failed to create an image source for URL: \(url.absoluteString)")
+    }
+    return imageSource
+  }
+
+  private func loadCGImage(from imageSource: CGImageSource, url: URL) throws -> CGImage {
+    guard let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+      throw OcrError.unreadableImage("Failed to decode image data at URL: \(url.absoluteString)")
+    }
+    return cgImage
+  }
+
+  private func cgImageOrientation(from imageSource: CGImageSource) -> CGImagePropertyOrientation {
+    guard
+      let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any],
+      let orientationValue = properties[kCGImagePropertyOrientation] as? UInt32,
+      let orientation = CGImagePropertyOrientation(rawValue: orientationValue)
+    else {
+      return .up
+    }
+
+    return orientation
+  }
+
+  private func compareObservations(_ lhs: VNRecognizedTextObservation, _ rhs: VNRecognizedTextObservation) -> Bool {
+    let rowTolerance: CGFloat = 0.02
+    let verticalDelta = abs(lhs.boundingBox.midY - rhs.boundingBox.midY)
+
+    if verticalDelta <= rowTolerance {
+      return lhs.boundingBox.minX < rhs.boundingBox.minX
+    }
+
+    return lhs.boundingBox.maxY > rhs.boundingBox.maxY
+  }
+
+  private func boundingBoxMap(for boundingBox: CGRect, imageSize: CGSize) -> [String: Double] {
+    let x = boundingBox.origin.x * imageSize.width
+    let y = (1 - boundingBox.origin.y - boundingBox.height) * imageSize.height
+    let width = boundingBox.width * imageSize.width
+    let height = boundingBox.height * imageSize.height
+
+    return [
+      "x": x,
+      "y": y,
+      "width": width,
+      "height": height
+    ]
+  }
+}
+
+private enum OcrError: LocalizedError {
+  case invalidUri(String)
+  case unreadableImage(String)
+
+  var errorDescription: String? {
+    switch self {
+    case .invalidUri(let message), .unreadableImage(let message):
+      return message
     }
   }
 }
