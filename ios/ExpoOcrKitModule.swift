@@ -4,6 +4,8 @@ import UIKit
 import Vision
 
 public class ExpoOcrKitModule: Module {
+  private let maxImageDimension = 2000
+
   public func definition() -> ModuleDefinition {
     Name("ExpoOcrKit")
 
@@ -30,9 +32,9 @@ public class ExpoOcrKitModule: Module {
 
     let imageURL = try resolveImageURL(from: trimmedUri)
     let imageSource = try loadImageSource(from: imageURL)
-    let cgImage = try loadCGImage(from: imageSource, url: imageURL)
+    let cgImage = try loadDownsampledCGImage(from: imageSource, url: imageURL)
     let imageOrientation = cgImageOrientation(from: imageSource)
-    let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
+    let imageSize = resolvedImageSize(from: imageSource, orientation: imageOrientation, fallbackImage: cgImage)
 
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
@@ -91,6 +93,21 @@ public class ExpoOcrKitModule: Module {
     return cgImage
   }
 
+  private func loadDownsampledCGImage(from imageSource: CGImageSource, url: URL) throws -> CGImage {
+    let options: CFDictionary = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceShouldCacheImmediately: false,
+      kCGImageSourceThumbnailMaxPixelSize: maxImageDimension
+    ] as CFDictionary
+
+    guard let cgImage = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, options) else {
+      return try loadCGImage(from: imageSource, url: url)
+    }
+
+    return cgImage
+  }
+
   private func cgImageOrientation(from imageSource: CGImageSource) -> CGImagePropertyOrientation {
     guard
       let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any],
@@ -101,6 +118,23 @@ public class ExpoOcrKitModule: Module {
     }
 
     return orientation
+  }
+
+  private func resolvedImageSize(from imageSource: CGImageSource, orientation: CGImagePropertyOrientation, fallbackImage: CGImage) -> CGSize {
+    guard
+      let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any],
+      let pixelWidth = properties[kCGImagePropertyPixelWidth] as? CGFloat,
+      let pixelHeight = properties[kCGImagePropertyPixelHeight] as? CGFloat
+    else {
+      return CGSize(width: fallbackImage.width, height: fallbackImage.height)
+    }
+
+    switch orientation {
+    case .left, .leftMirrored, .right, .rightMirrored:
+      return CGSize(width: pixelHeight, height: pixelWidth)
+    default:
+      return CGSize(width: pixelWidth, height: pixelHeight)
+    }
   }
 
   private func compareObservations(_ lhs: VNRecognizedTextObservation, _ rhs: VNRecognizedTextObservation) -> Bool {

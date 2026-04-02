@@ -27,6 +27,14 @@ type OcrResult = {
 };
 ```
 
+## Performance notes
+
+The native OCR implementations downsample very large images before recognition to reduce memory pressure and OCR latency on large receipt photos.
+
+- Android downsamples before creating `InputImage`
+- iOS uses `CGImageSource` thumbnail decoding before running Vision
+- bounding boxes are scaled back to the original image coordinate space before they are returned to JavaScript
+
 ## Expo integration
 
 This package contains native code, so it does not work in Expo Go.
