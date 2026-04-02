@@ -4,6 +4,21 @@
   "description": "On-device OCR module for Expo and React Native using ML Kit (Android) and Vision (iOS)",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "android",
+    "ios",
+    "build",
+    "expo-module.config.json",
+    "app.plugin.js",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    }
+  },
   "scripts": {
     "build": "expo-module build",
     "clean": "expo-module clean",
@@ -18,8 +33,11 @@
   "keywords": [
     "react-native",
     "expo",
-    "expo-ocr-kit",
-    "ExpoOcrKit"
+    "ocr",
+    "text-recognition",
+    "mlkit",
+    "vision",
+    "expo-module"
   ],
   "repository": "https://github.com/ManojKanth/expo-ocr-kit",
   "bugs": {
