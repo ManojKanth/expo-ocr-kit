@@ -5,10 +5,11 @@ On-device text recognition for Expo and React Native.
 `expo-ocr-kit` is a native OCR module built with the Expo Modules API. It uses ML Kit on Android and Vision on iOS, and exposes a single typed API for both platforms.
 
 
+![demo](https://github.com/user-attachments/assets/31b172d2-0ba2-4b0b-9ff3-ec6193f2b214)
 
-https://github.com/user-attachments/assets/59971397-09db-4769-a6e1-ae8788bf1b01
 
-
+![demo2](https://github.com/user-attachments/assets/28389387-0377-46a4-bc88-13cb06f43caf)
+![demo3](https://github.com/user-attachments/assets/36617a1a-62a2-484c-a73a-08dab35962c3)
 
 ## Why this package
 
