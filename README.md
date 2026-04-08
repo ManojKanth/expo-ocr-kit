@@ -78,11 +78,9 @@ npx expo run:android
 npx expo run:ios
 ```
 
-## Camera support
+`expo-ocr-kit` does not provide camera capture. The OCR API is image-based, so your app should capture or pick an image first, then pass that image to OCR.
 
-The OCR API is image-based. Camera capture should stay in your app layer or use a helper package such as `expo-image-picker`.
-
-If your Expo app captures images with the camera, add the bundled config plugin:
+If your Expo app already uses the camera and you want this package to add the native camera permission entries during prebuild, you can use the bundled config plugin:
 
 ```json
 {
@@ -99,7 +97,7 @@ If your Expo app captures images with the camera, add the bundled config plugin:
 }
 ```
 
-The plugin adds:
+The config plugin adds:
 
 - iOS: `NSCameraUsageDescription`
 - Android: `android.permission.CAMERA`
